@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bolo Kurowo — Tabungan & Sosial</title>
+<style>
+:root{--navy:#07506b;--blue:#19a9d7;--gold:#f2c94c;--bg:#f4f8fa;--card:#fff;--text:#17313d;--muted:#6b7d85;--danger:#c94b4b;--ok:#2e8b57;--line:#dce7eb}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+button,input,select,textarea{font:inherit}button{cursor:pointer;border:0}
+.hidden{display:none!important}.app{min-height:100vh}.login{min-height:100vh;display:grid;place-items:center;padding:20px;background:linear-gradient(145deg,#eef8fb,#fff)}
+.login-card{width:min(420px,100%);background:#fff;border-radius:24px;padding:28px;box-shadow:0 18px 60px #07506b1c;text-align:center}
+.logo{width:115px;height:115px;object-fit:contain;border-radius:50%}.login h1{margin:8px 0 2px;color:var(--navy);letter-spacing:1px}.tag{color:var(--muted);margin:0 0 22px}
+.form{text-align:left;display:grid;gap:12px}.form label{font-size:13px;font-weight:700}.form input,.form select,.form textarea{width:100%;padding:12px 13px;border:1px solid var(--line);border-radius:12px;outline:none;background:#fff}.form input:focus,.form select:focus,.form textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px #19a9d71a}
+.btn{padding:11px 15px;border-radius:12px;font-weight:800}.primary{background:var(--navy);color:#fff}.secondary{background:#e9f5f8;color:var(--navy)}.danger{background:#fdecec;color:var(--danger)}.gold{background:var(--gold);color:#17313d}
+.demo{margin-top:18px;padding:12px;border-radius:12px;background:#f6fafb;font-size:12px;color:var(--muted)}
+.layout{display:flex;min-height:100vh}.sidebar{width:250px;background:var(--navy);color:#fff;padding:18px;position:fixed;inset:0 auto 0 0}.brand{display:flex;align-items:center;gap:10px;padding:4px 4px 20px}.brand img{width:46px;height:46px;border-radius:50%;object-fit:contain;background:#fff}.brand b{display:block}.brand small{opacity:.75}.nav{display:grid;gap:7px}.nav button{background:transparent;color:#dceff4;text-align:left;padding:12px;border-radius:11px;font-weight:700}.nav button.active,.nav button:hover{background:#ffffff18;color:#fff}.logout{position:absolute;left:18px;right:18px;bottom:18px;background:#fff;color:var(--navy)}
+.main{margin-left:250px;width:calc(100% - 250px);padding:24px}.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}.topbar h2{margin:0}.pill{padding:7px 10px;border-radius:999px;background:#e8f6fa;color:var(--navy);font-size:12px;font-weight:800}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:0 6px 22px #17313d08}.stat .label{font-size:12px;color:var(--muted);font-weight:700}.stat .value{font-size:25px;font-weight:900;margin-top:7px;color:var(--navy)}
+.section{margin-top:18px}.section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.section-head h3{margin:0}
+.table-wrap{overflow:auto;background:#fff;border:1px solid var(--line);border-radius:16px}.table{width:100%;border-collapse:collapse;min-width:680px}.table th,.table td{padding:12px 14px;border-bottom:1px solid var(--line);text-align:left;font-size:13px}.table th{background:#f7fbfc;color:var(--muted);font-size:11px;text-transform:uppercase}.table tr:last-child td{border-bottom:0}
+.badge{display:inline-block;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:800}.badge.ok{background:#e9f7ef;color:var(--ok)}.badge.no{background:#fff1f1;color:var(--danger)}
+.modal{position:fixed;inset:0;background:#17313d80;display:grid;place-items:center;padding:20px;z-index:10}.modal-card{width:min(520px,100%);background:#fff;border-radius:20px;padding:20px}.modal-head{display:flex;justify-content:space-between;align-items:center}.modal-head h3{margin:0}.x{background:#eef4f6;border-radius:50%;width:34px;height:34px}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.toast{position:fixed;right:20px;bottom:20px;background:#17313d;color:#fff;padding:12px 15px;border-radius:12px;z-index:20;box-shadow:0 8px 30px #0002}
+.mobile-menu{display:none}.empty{padding:28px;text-align:center;color:var(--muted)}
+@media(max-width:900px){.sidebar{width:220px}.main{margin-left:220px;width:calc(100% - 220px)}.grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:680px){.sidebar{transform:translateX(-100%);transition:.2s;z-index:9}.sidebar.open{transform:translateX(0)}.main{margin-left:0;width:100%;padding:16px}.mobile-menu{display:inline-block;background:#fff;border:1px solid var(--line);padding:9px 11px;border-radius:10px}.grid{grid-template-columns:1fr 1fr}.row{grid-template-columns:1fr}.topbar{gap:10px}.topbar h2{font-size:20px}}
+</style>
+</head>
+<body>
+<div id="loginView" class="login">
+  <div class="login-card">
+    <img id="loginLogo" class="logo" alt="Logo Bolo Kurowo">
+    <h1>BOLO KUROWO</h1><p class="tag">Since 2024 · Khairunnas anfa'uhum linnas</p>
+    <form id="loginForm" class="form">
+      <label>Username</label><input id="username" required placeholder="Username">
+      <label>Password</label><input id="password" type="password" required placeholder="Password">
+      <button class="btn primary">Masuk</button>
+    </form>
+  </div>
+</div>
+
+<div id="appView" class="app hidden">
+<div class="layout">
+  <aside id="sidebar" class="sidebar">
+    <div class="brand"><img id="sideLogo" alt=""><div><b>BOLO KUROWO</b><small>Since 2024</small></div></div>
+    <nav id="nav" class="nav"></nav>
+    <button id="logout" class="btn logout">Keluar</button>
+  </aside>
+  <main class="main">
+    <div class="topbar"><div><button class="mobile-menu" id="menuBtn">☰</button><span id="pageTitle" style="margin-left:8px"></span></div><span id="rolePill" class="pill"></span></div>
+    <div id="content"></div>
+  </main>
+</div>
+</div>
+<div id="modal" class="modal hidden"></div>
+<div id="toast" class="toast hidden"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://kuuyrkixijltpxwfrmi.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_blleWYszGs9hiLCHTdKxFw_QcM7jCne';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+const LOGO = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
+document.getElementById('loginLogo').src=LOGO;document.getElementById('sideLogo').src=LOGO;
+
+let db={users:[],members:[],savings:[],transactions:[],activities:[],announcements:[]};
+async function loadDb(){
+  const [p,s,t,a,n]=await Promise.all([
+    supabase.from('profiles').select('*').order('created_at'),
+    supabase.from('savings').select('*').order('date',{ascending:false}),
+    supabase.from('transactions').select('*').order('date',{ascending:false}),
+    supabase.from('activities').select('*').order('date',{ascending:false}),
+    supabase.from('announcements').select('*').order('created_at',{ascending:false})
+  ]);
+  const err=[p,s,t,a,n].find(x=>x.error)?.error;
+  if(err) throw err;
+  db.members=(p.data||[]).map(x=>({id:x.id,name:x.full_name,phone:x.phone||'',active:x.active,username:x.username,role:x.role}));
+  db.users=(p.data||[]).map(x=>({id:x.id,username:x.username,role:x.role,memberId:x.role==='member'?x.id:null}));
+  db.savings=(s.data||[]).map(x=>({id:x.id,memberId:x.member_id,date:x.date,amount:Number(x.amount),note:x.note||''}));
+  db.transactions=(t.data||[]).map(x=>({id:x.id,type:x.type,date:x.date,category:x.category||'',amount:Number(x.amount),note:x.description||''}));
+  db.activities=(a.data||[]).map(x=>({id:x.id,name:x.name,date:x.date,location:x.location||'',description:x.description||''}));
+  db.announcements=n.data||[];
+}
+async function refresh(){try{await loadDb();render()}catch(e){console.error(e);toast('Gagal memuat data online: '+(e.message||e))}}
+async function save(){await loadDb()}
+function userForMember(memberId){return db.users.find(u=>u.memberId===memberId&&u.role==='member')}
+function usernameTaken(username,ignoreId=''){return db.users.some(u=>u.username.toLowerCase()===String(username).toLowerCase()&&u.id!==ignoreId)}
+function money(n){return new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(n||0)}
+function fmt(d){return new Date(d).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'})}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+let session=null, page='dashboard';
+
+document.getElementById('loginForm').onsubmit=async e=>{e.preventDefault();let u=username.value.trim().toLowerCase(),p=password.value;if(!u||!p)return;try{let {data:prof,error:pe}=await supabase.from('profiles').select('*').eq('username',u).maybeSingle();if(pe)throw pe;if(!prof){toast('Username atau password salah');return}let email=u+'@bolokurowo.local';let {data,error}=await supabase.auth.signInWithPassword({email,password:p});if(error||!data.user){toast('Username atau password salah');return}if(!prof.active){await supabase.auth.signOut();toast('Akun anggota tidak aktif');return}session={id:prof.id,username:prof.username,role:prof.role,memberId:prof.role==='member'?prof.id:null};page='dashboard';await loadDb();loginView.classList.add('hidden');appView.classList.remove('hidden');render()}catch(err){console.error(err);toast('Login gagal: '+(err.message||err))}};
+logout.onclick=async()=>{await supabase.auth.signOut();session=null;appView.classList.add('hidden');loginView.classList.remove('hidden');loginForm.reset()};
+menuBtn.onclick=()=>sidebar.classList.toggle('open');
+
+function navItems(){return session.role==='admin'?[
+['dashboard','🏠 Dashboard'],['members','👥 Anggota'],['savings','💰 Tabungan'],['transactions','📊 Keuangan'],['reports','📑 Laporan'],['activities','📅 Kegiatan'],['settings','🔐 Keamanan']
+]:[['dashboard','🏠 Dashboard'],['savings','💰 Tabungan Saya'],['reports','📑 Laporan'],['activities','📅 Kegiatan']]}
+function renderNav(){nav.innerHTML=navItems().map(x=>`<button class="${page===x[0]?'active':''}" onclick="go('${x[0]}')">${x[1]}</button>`).join('')}
+function go(p){page=p;sidebar.classList.remove('open');render()}
+function render(){renderNav();rolePill.textContent=session.role==='admin'?'ADMIN':'ANGGOTA';pageTitle.textContent=navItems().find(x=>x[0]===page)?.[1].replace(/^\\S+\\s/,'')||'';({dashboard:renderDashboard,members:renderMembers,savings:renderSavings,transactions:renderTransactions,reports:renderReports,activities:renderActivities,settings:renderSettings}[page]||renderDashboard)()}
+
+function totals(){return {savings:db.savings.reduce((a,b)=>a+b.amount,0),income:db.transactions.filter(x=>x.type==='income').reduce((a,b)=>a+b.amount,0),expense:db.transactions.filter(x=>x.type==='expense').reduce((a,b)=>a+b.amount,0)}}
+function renderDashboard(){
+let t=totals(), cash=t.income-t.expense;
+let member=session.role==='member'?db.members.find(m=>m.id===session.memberId):null;
+let mine=session.role==='member'?db.savings.filter(s=>s.memberId===session.memberId).reduce((a,b)=>a+b.amount,0):0;
+let recent=[...db.transactions].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);
+content.innerHTML=`<div class="grid">
+${session.role==='admin'?`
+<div class="card stat"><div class="label">Total anggota</div><div class="value">${db.members.filter(m=>m.active).length}</div></div>
+<div class="card stat"><div class="label">Total tabungan</div><div class="value">${money(t.savings)}</div></div>`:
+`<div class="card stat"><div class="label">Tabungan saya</div><div class="value">${money(mine)}</div></div>
+<div class="card stat"><div class="label">Status minggu ini</div><div class="value" style="font-size:18px">${weekPaid(session.memberId)?'✅ Sudah setor':'⚠️ Belum setor'}</div></div>`}
+<div class="card stat"><div class="label">Saldo kas</div><div class="value">${money(cash)}</div></div>
+<div class="card stat"><div class="label">Pengeluaran</div><div class="value">${money(t.expense)}</div></div>
+</div>
+<div class="section"><div class="section-head"><h3>${session.role==='admin'?'Transaksi terbaru':'Aktivitas keuangan terbaru'}</h3></div>
+<div class="table-wrap">${recent.length?`<table class="table"><thead><tr><th>Tanggal</th><th>Jenis</th><th>Keterangan</th><th>Nominal</th></tr></thead><tbody>${recent.map(x=>`<tr><td>${fmt(x.date)}</td><td>${x.type==='income'?'Pemasukan':'Pengeluaran'}</td><td>${esc(x.note)}</td><td>${money(x.amount)}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">Belum ada transaksi.</div>'}</div></div>`;
+}
+function weekKey(d=new Date()){let x=new Date(d);x.setHours(0,0,0,0);let day=x.getDay()||7;x.setDate(x.getDate()-day+1);return x.toISOString().slice(0,10)}
+function weekPaid(mid){let k=weekKey();return db.savings.some(s=>s.memberId===mid&&weekKey(s.date)===k)}
+function renderMembers(){
+content.innerHTML=`<div class="section-head"><h3>Data Anggota</h3><button class="btn primary" onclick="memberModal()">+ Tambah Anggota</button></div>
+<div class="table-wrap"><table class="table"><thead><tr><th>Nama</th><th>No. HP</th><th>Username</th><th>Status</th><th>Total Tabungan</th><th>Aksi</th></tr></thead><tbody>
+${db.members.map(m=>{let total=db.savings.filter(s=>s.memberId===m.id).reduce((a,b)=>a+b.amount,0);return `<tr><td><b>${esc(m.name)}</b></td><td>${esc(m.phone||'-')}</td><td>${esc(userForMember(m.id)?.username||'-')}</td><td><span class="badge ${m.active?'ok':'no'}">${m.active?'Aktif':'Nonaktif'}</span></td><td>${money(total)}</td><td><button class="btn secondary" onclick="memberModal('${m.id}')">Edit</button></td></tr>`}).join('')}</tbody></table></div>`;
+}
+function renderSavings(){
+if(session.role==='member'){
+let arr=db.savings.filter(s=>s.memberId===session.memberId).sort((a,b)=>b.date.localeCompare(a.date)),total=arr.reduce((a,b)=>a+b.amount,0);
+content.innerHTML=`<div class="grid"><div class="card stat"><div class="label">Total tabungan</div><div class="value">${money(total)}</div></div><div class="card stat"><div class="label">Setoran minggu ini</div><div class="value" style="font-size:18px">${weekPaid(session.memberId)?'✅ Sudah setor':'⚠️ Belum setor'}</div></div></div>
+<div class="section"><div class="section-head"><h3>Riwayat Setoran</h3></div><div class="table-wrap"><table class="table"><thead><tr><th>Tanggal</th><th>Nominal</th><th>Keterangan</th></tr></thead><tbody>${arr.length?arr.map(s=>`<tr><td>${fmt(s.date)}</td><td>${money(s.amount)}</td><td>${esc(s.note||'Tabungan mingguan')}</td></tr>`).join(''):'<tr><td colspan="3" class="empty">Belum ada setoran.</td></tr>'}</tbody></table></div></div>`;
+return}
+content.innerHTML=`<div class="section-head"><div><h3>Tabungan Anggota</h3><p style="color:var(--muted);margin:4px 0 0">Dana tabungan dipisahkan dari dana kas.</p></div><button class="btn primary" onclick="savingModal()">+ Catat Setoran</button></div>
+<div class="table-wrap"><table class="table"><thead><tr><th>Tanggal</th><th>Anggota</th><th>Nominal</th><th>Keterangan</th><th>Aksi</th></tr></thead><tbody>${db.savings.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(s=>{let m=db.members.find(x=>x.id===s.memberId);return `<tr><td>${fmt(s.date)}</td><td>${esc(m?.name||'Anggota tidak ditemukan')}</td><td>${money(s.amount)}</td><td>${esc(s.note||'Tabungan mingguan')}</td><td><button class="btn secondary" onclick="savingModal('${s.id}')">Edit</button></td></tr>`}).join('')||'<tr><td colspan="5" class="empty">Belum ada setoran.</td></tr>'}</tbody></table></div>
+<div class="section"><div class="grid"><div class="card stat"><div class="label">Total dana tabungan</div><div class="value">${money(totals().savings)}</div></div><div class="card stat"><div class="label">Dana kas</div><div class="value">${money(totals().income-totals().expense)}</div></div></div></div>`;
+}
+function renderTransactions(){
+let arr=[...db.transactions].sort((a,b)=>b.date.localeCompare(a.date));
+content.innerHTML=`<div class="section-head"><h3>Keuangan Kas</h3><div><button class="btn primary" onclick="transactionModal('income')">+ Pemasukan</button> <button class="btn gold" onclick="transactionModal('expense')">+ Pengeluaran</button></div></div>
+<div class="table-wrap"><table class="table"><thead><tr><th>Tanggal</th><th>Jenis</th><th>Kategori</th><th>Keterangan</th><th>Nominal</th><th>Aksi</th></tr></thead><tbody>${arr.length?arr.map(x=>`<tr><td>${fmt(x.date)}</td><td>${x.type==='income'?'Pemasukan':'Pengeluaran'}</td><td>${esc(x.category)}</td><td>${esc(x.note)}</td><td>${money(x.amount)}</td><td><button class="btn danger" onclick="deleteTx('${x.id}')">Hapus</button></td></tr>`).join(''):'<tr><td colspan="6" class="empty">Belum ada transaksi.</td></tr>'}</tbody></table></div>`;
+}
+function renderReports(){
+let t=totals(),cash=t.income-t.expense;
+content.innerHTML=`<div class="card"><h3>Laporan Keuangan Mingguan</h3><p style="color:var(--muted)">Ringkasan dana tabungan dan dana kas. Keduanya dicatat terpisah.</p>
+<div class="grid">
+<div class="stat"><div class="label">Saldo awal konsep</div><div class="value">${money(0)}</div></div>
+<div class="stat"><div class="label">Tabungan anggota</div><div class="value">${money(t.savings)}</div></div>
+<div class="stat"><div class="label">Pemasukan kas</div><div class="value">${money(t.income)}</div></div>
+<div class="stat"><div class="label">Pengeluaran</div><div class="value">${money(t.expense)}</div></div>
+</div><hr style="border:0;border-top:1px solid var(--line);margin:20px 0"><h2 style="color:var(--navy)">Dana kas saat ini: ${money(cash)}</h2></div>
+<div class="section"><div class="section-head"><h3>Detail Transaksi</h3></div><div class="table-wrap"><table class="table"><thead><tr><th>Tanggal</th><th>Jenis</th><th>Kategori</th><th>Nominal</th></tr></thead><tbody>${db.transactions.length?db.transactions.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<tr><td>${fmt(x.date)}</td><td>${x.type==='income'?'Pemasukan':'Pengeluaran'}</td><td>${esc(x.category)}</td><td>${money(x.amount)}</td></tr>`).join(''):'<tr><td colspan="4" class="empty">Belum ada transaksi.</td></tr>'}</tbody></table></div></div>`;
+}
+function renderSettings(){
+if(session?.role!=='admin'){go('dashboard');return}
+let admin=db.users.find(u=>u.role==='admin');
+content.innerHTML=`<div class="card" style="max-width:560px"><h3>Keamanan Admin</h3><p style="color:var(--muted)">Ubah password admin di sini. Password tidak ditampilkan di halaman login.</p><form class="form" onsubmit="saveAdminPassword(event)"><label>Username Admin</label><input value="${esc(admin?.username||'admin')}" disabled><label>Password Saat Ini</label><input name="current" type="password" required autocomplete="current-password"><label>Password Baru</label><input name="next" type="password" minlength="6" required autocomplete="new-password" placeholder="Minimal 6 karakter"><label>Ulangi Password Baru</label><input name="confirm" type="password" minlength="6" required autocomplete="new-password"><button class="btn primary">Simpan Password Admin</button></form></div>`;
+}
+async function saveAdminPassword(e){
+e.preventDefault();if(session?.role!=='admin'){toast('Hanya admin yang dapat mengubah password');return}
+let f=new FormData(e.target),current=String(f.get('current')||''),next=String(f.get('next')||''),confirm=String(f.get('confirm')||'');
+if(next.length<6){toast('Password baru minimal 6 karakter');return}if(next!==confirm){toast('Ulangi password baru harus sama');return}
+let email=session.username+'@bolokurowo.local';let {error}=await supabase.auth.signInWithPassword({email,password:current});if(error){toast('Password saat ini salah');return}
+const {error:upErr}=await supabase.auth.updateUser({password:next});if(upErr){toast('Gagal mengubah password: '+upErr.message);return}e.target.reset();toast('Password admin berhasil diubah')
+}
+
+function renderActivities(){
+content.innerHTML=`<div class="section-head"><h3>Kegiatan Bolo Kurowo</h3>${session.role==='admin'?'<button class="btn primary" onclick="activityModal()">+ Tambah Kegiatan</button>':''}</div>
+<div class="grid">${db.activities.length?db.activities.map(a=>`<div class="card"><h3>${esc(a.name)}</h3><p>${fmt(a.date)} · ${esc(a.location||'')}</p><p style="color:var(--muted)">${esc(a.description||'')}</p>${session.role==='admin'?`<button class="btn danger" onclick="deleteActivity('${a.id}')">Hapus</button>`:''}</div>`).join(''):'<div class="card" style="grid-column:1/-1"><div class="empty">Belum ada kegiatan.</div></div>'}</div>`;
+}
+function showModal(inner){modal.innerHTML=`<div class="modal-card">${inner}</div>`;modal.classList.remove('hidden')}
+function closeModal(){modal.classList.add('hidden')}
+modal.onclick=e=>{if(e.target===modal)closeModal()}
+function memberModal(id){
+let m=db.members.find(x=>x.id===id)||{id:'',name:'',phone:'',active:true};
+let u=id?userForMember(id):null;
+showModal(`<div class="modal-head"><h3>${id?'Edit':'Tambah'} Anggota</h3><button class="x" onclick="closeModal()">×</button></div><form class="form" onsubmit="saveMember(event,'${id||''}','${u?.id||''}')"><label>Nama</label><input name="name" value="${esc(m.name)}" required><label>No. HP</label><input name="phone" value="${esc(m.phone||'')}"><label>Username Login</label><input name="username" value="${esc(u?.username||'')}" required placeholder="Username unik"><label>${u?'Password Baru (kosongkan jika tidak diubah)':'Password Login'}</label><input name="password" type="password" ${u?'':'required'} placeholder="Minimal 6 karakter"><label>Status</label><select name="active"><option value="true" ${m.active?'selected':''}>Aktif</option><option value="false" ${!m.active?'selected':''}>Nonaktif</option></select><button class="btn primary">Simpan</button></form>`);
+}
+async function saveMember(e,id,userId){e.preventDefault();if(session?.role!=='admin'){toast('Hanya admin yang dapat mengubah anggota');return}let f=new FormData(e.target);if(!id){toast('Akun anggota baru perlu dibuat di Supabase Auth terlebih dahulu. Untuk saat ini gunakan 2 akun yang sudah dibuat.');return}let payload={full_name:f.get('name'),phone:f.get('phone'),active:f.get('active')==='true'};let {error}=await supabase.from('profiles').update(payload).eq('id',id);if(error){toast('Gagal menyimpan anggota: '+error.message);return}await refresh();closeModal();toast('Data anggota tersimpan')}
+
+function savingModal(id){
+if(session?.role!=='admin'){toast('Hanya admin yang dapat mengubah data tabungan');return}
+let item=id?db.savings.find(s=>s.id===id):null;
+showModal(`<div class="modal-head"><h3>${item?'Edit Setoran':'Catat Setoran'}</h3><button class="x" onclick="closeModal()">×</button></div><form class="form" onsubmit="saveSaving(event,'${item?.id||''}')"><label>Anggota</label><select name="memberId" required>${db.members.filter(m=>m.active||m.id===item?.memberId).map(m=>`<option value="${m.id}" ${m.id===item?.memberId?'selected':''}>${esc(m.name)}</option>`).join('')}</select><div class="row"><div><label>Tanggal</label><input type="date" name="date" value="${item?.date||new Date().toISOString().slice(0,10)}" required></div><div><label>Nominal</label><input type="number" name="amount" min="1" step="1" inputmode="numeric" value="${item?.amount??10000}" required></div></div><label>Keterangan</label><input name="note" value="${esc(item?.note||'Tabungan mingguan')}"><button class="btn primary">${item?'Simpan Perubahan':'Simpan Setoran'}</button></form>`);
+}
+async function saveSaving(e,id=''){
+if(session?.role!=='admin'){toast('Hanya admin yang dapat mengubah data tabungan');return}
+e.preventDefault();let f=new FormData(e.target), data={member_id:f.get('memberId'),date:f.get('date'),amount:Number(f.get('amount')),note:f.get('note'),created_by:session.id};
+if(!data.member_id||!data.date||!Number.isFinite(data.amount)||data.amount<=0){toast('Periksa data setoran');return}
+let res=id?await supabase.from('savings').update(data).eq('id',id):await supabase.from('savings').insert(data);
+if(res.error){toast('Gagal menyimpan setoran: '+res.error.message);return}await refresh();closeModal();toast(id?'Setoran berhasil diperbaiki':'Setoran berhasil dicatat')
+}
+
+function transactionModal(type){
+showModal(`<div class="modal-head"><h3>${type==='income'?'Tambah Pemasukan':'Tambah Pengeluaran'}</h3><button class="x" onclick="closeModal()">×</button></div><form class="form" onsubmit="saveTx(event,'${type}')"><label>Tanggal</label><input type="date" name="date" value="${new Date().toISOString().slice(0,10)}" required><label>Kategori</label><input name="category" placeholder="${type==='income'?'Contoh: Donasi':'Contoh: Santunan'}" required><label>Nominal</label><input type="number" name="amount" min="1" required><label>Keterangan</label><textarea name="note" rows="3"></textarea><button class="btn primary">Simpan</button></form>`);
+}
+async function saveTx(e,type){if(session?.role!=='admin'){toast('Hanya admin yang dapat mengubah keuangan');return}e.preventDefault();let f=new FormData(e.target),data={type,amount:Number(f.get('amount')),category:f.get('category'),description:f.get('note'),date:f.get('date'),created_by:session.id};let {error}=await supabase.from('transactions').insert(data);if(error){toast('Gagal menyimpan transaksi: '+error.message);return}await refresh();closeModal();toast('Transaksi tersimpan')}
+
+async function deleteTx(id){if(session?.role!=='admin'){toast('Hanya admin yang dapat menghapus transaksi');return}if(!confirm('Hapus transaksi ini?'))return;let {error}=await supabase.from('transactions').delete().eq('id',id);if(error){toast('Gagal menghapus transaksi: '+error.message);return}await refresh();toast('Transaksi dihapus')}
+
+function activityModal(){
+showModal(`<div class="modal-head"><h3>Tambah Kegiatan</h3><button class="x" onclick="closeModal()">×</button></div><form class="form" onsubmit="saveActivity(event)"><label>Nama kegiatan</label><input name="name" required placeholder="Santunan yatim"><label>Tanggal</label><input type="date" name="date" required><label>Lokasi</label><input name="location"><label>Deskripsi</label><textarea name="description" rows="3"></textarea><button class="btn primary">Simpan</button></form>`);
+}
+async function saveActivity(e){if(session?.role!=='admin'){toast('Hanya admin yang dapat mengubah kegiatan');return}e.preventDefault();let f=new FormData(e.target),data={name:f.get('name'),date:f.get('date'),location:f.get('location'),description:f.get('description'),created_by:session.id};let {error}=await supabase.from('activities').insert(data);if(error){toast('Gagal menyimpan kegiatan: '+error.message);return}await refresh();closeModal();toast('Kegiatan ditambahkan')}
+
+async function deleteActivity(id){if(session?.role!=='admin'){toast('Hanya admin yang dapat menghapus kegiatan');return}if(!confirm('Hapus kegiatan?'))return;let {error}=await supabase.from('activities').delete().eq('id',id);if(error){toast('Gagal menghapus kegiatan: '+error.message);return}await refresh()}
+
+function toast(msg){toastEl=document.getElementById('toast');toastEl.textContent=msg;toastEl.classList.remove('hidden');setTimeout(()=>toastEl.classList.add('hidden'),2200)}
+(async()=>{try{await loadDb()}catch(e){console.error(e)}})();
+</script>
+</body>
+</html>
