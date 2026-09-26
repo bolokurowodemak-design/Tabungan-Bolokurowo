@@ -115,7 +115,7 @@ export default async function handler(req,res){
     }
 
     const pp=await fetch(
-      base+'/rest/v1/profiles?id='+
+      base+'/rest/v1/profiles?id=eq.'+
       encodeURIComponent(userId),
       {
         method:'PATCH',
