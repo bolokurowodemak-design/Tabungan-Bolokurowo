@@ -32,7 +32,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer;border:0}
     <img id="loginLogo" class="logo" alt="Logo Bolo Kurowo">
     <h1>BOLO KUROWO</h1><p class="tag">Since 2024 · Khairunnas anfa'uhum linnas</p>
     <form id="loginForm" class="form">
-      <label>Email / Username</label><input id="username" required placeholder="Email atau admin">
+      <label>Username</label><input id="username" required placeholder="Username">
       <label>Password</label><input id="password" type="password" required placeholder="Password">
       <button class="btn primary">Masuk</button>
     </form>
@@ -79,177 +79,90 @@ document.getElementById('loginLogo').src=LOGO;document.getElementById('sideLogo'
 
 const SUPABASE_URL='https://kuuyrkixijltlpxwfrmi.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_blleWYszGs9hiLCHTdKxFw_QcM7jCne';
-const supabase=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+const supabaseClient=supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+let db={users:[],members:[],savings:[],transactions:[],activities:[],announcements:[]};
+let session=null,page='dashboard';
 
-const initial={users:[],members:[],savings:[],transactions:[],activities:[],announcements:[]};
-let db={...initial},session=null,page='dashboard',remoteReady=false;
-
-function userForMember(memberId){return db.users.find(u=>u.memberId===memberId&&u.role==='member')}
-function usernameTaken(username,ignoreId=''){return db.users.some(u=>String(u.username||'').toLowerCase()===String(username).toLowerCase()&&u.id!==ignoreId)}
+async function loadRemote(){
+  const {data:{user}}=await supabaseClient.auth.getUser();
+  if(!user) throw new Error('Sesi login tidak ditemukan');
+  const [{data:profile,error:pe},{data:members,error:me},{data:savings,error:se},{data:transactions,error:te},{data:activities,error:ae},{data:announcements,error:ane}]=await Promise.all([
+    supabaseClient.from('profiles').select('*').eq('id',user.id).single(),
+    supabaseClient.from('members').select('*').order('name'),
+    supabaseClient.from('savings').select('*').order('date',{ascending:false}),
+    supabaseClient.from('transactions').select('*').order('date',{ascending:false}),
+    supabaseClient.from('activities').select('*').order('date',{ascending:false}),
+    supabaseClient.from('announcements').select('*').order('created_at',{ascending:false})
+  ]);
+  const err=pe||me||se||te||ae||ane;if(err) throw err;
+  if(!profile) throw new Error('Profil pengguna belum tersedia');
+  db.members=members||[];db.savings=savings||[];db.transactions=transactions||[];db.activities=activities||[];db.announcements=announcements||[];
+  db.users=[{id:user.id,username:profile.username||user.email,role:profile.role,memberId:db.members.find(m=>m.user_id===user.id)?.id||null,email:user.email}];
+  if(profile.role==='admin'){
+    const {data:profiles,error}=await supabaseClient.from('profiles').select('*').order('username');
+    if(error) throw error;
+    db.users=(profiles||[]).map(p=>({id:p.id,username:p.username,role:p.role,memberId:db.members.find(m=>m.user_id===p.id)?.id||null,email:null}));
+  }
+  session=db.users.find(u=>u.id===user.id)||db.users[0];
+}
 function money(n){return new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(n||0)}
 function fmt(d){return new Date(d).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'})}
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function userForMember(memberId){return db.users.find(u=>u.memberId===memberId&&u.role==='member')}
+function usernameTaken(username,ignoreId=''){return db.users.some(u=>u.username.toLowerCase()===String(username).toLowerCase()&&u.id!==ignoreId)}
 
-async function loadRemote(){
-  const [p,m,s,t,a]=await Promise.all([
-    supabase.from('profiles').select('*'),
-    supabase.from('members').select('*'),
-    supabase.from('savings').select('*'),
-    supabase.from('transactions').select('*'),
-    supabase.from('activities').select('*')
-  ]);
-  const bad=[p,m,s,t,a].find(x=>x.error);
-  if(bad) throw bad.error;
-  db.users=(p.data||[]).map(x=>({id:x.id,username:x.username||'',full_name:x.full_name||'',role:x.role,active:x.active,memberId:(m.data||[]).find(mm=>mm.user_id===x.id)?.id||null}));
-  db.members=m.data||[]; db.savings=s.data||[]; db.transactions=t.data||[]; db.activities=a.data||[]; db.announcements=[]; remoteReady=true;
+async function startApp(){
+  try{await loadRemote();loginView.classList.add('hidden');appView.classList.remove('hidden');page='dashboard';render();}
+  catch(e){console.error(e);await supabaseClient.auth.signOut();toast('Gagal memuat data: '+(e.message||'periksa Supabase/RLS'));}
 }
-
-async function save(){
-  if(!remoteReady)return;
-  try{
-    if(db.members.length){let r=await supabase.from('members').upsert(db.members.map(m=>({id:m.id,user_id:m.user_id||null,name:m.name,phone:m.phone||null,active:m.active})));if(r.error)throw r.error}
-    if(db.savings.length){let r=await supabase.from('savings').upsert(db.savings.map(x=>({id:x.id,member_id:x.member_id||x.member_id,date:x.date,amount:x.amount,note:x.note||null})));if(r.error)throw r.error}
-    if(db.transactions.length){let r=await supabase.from('transactions').upsert(db.transactions.map(x=>({id:x.id,type:x.type,date:x.date,category:x.category,amount:x.amount,note:x.note||null})));if(r.error)throw r.error}
-    if(db.activities.length){let r=await supabase.from('activities').upsert(db.activities.map(x=>({id:x.id,name:x.name,date:x.date,location:x.location||null,description:x.description||null})));if(r.error)throw r.error}
-    toast('Data online tersimpan');
-  }catch(err){console.error(err);toast('Gagal menyimpan online: '+(err.message||err))}
-}
-
-function newId(){return crypto.randomUUID()}
-function mapMember(m){return {...m,memberId:m.id}}
-
 loginForm.addEventListener('submit',async e=>{
   e.preventDefault();
-  const identifier=usernameInput.value.trim(); const password=passwordInput.value;
-  const aliases={'admin':'admin@bolokurowo.local','bolokurowo.demak':'bolokurowo.demak@gmail.com','mbahwong':'mbahwong@bolokurowo.demak'}; const email=identifier.includes('@')?identifier:(aliases[identifier.toLowerCase()]||identifier);
-  if(!email||!password){toast('Email/username dan password wajib diisi');return}
-  const {data,error}=await supabase.auth.signInWithPassword({email,password});
-  if(error){toast('Login gagal: '+(error.message||'Periksa email dan password'));return}
+  const login=usernameInput.value.trim(),password=passwordInput.value;
   try{
-    await loadRemote();
-    const x=db.users.find(u=>u.id===data.user.id);
-    if(!x||!x.active){await supabase.auth.signOut();toast('Profil pengguna belum aktif di aplikasi');return}
-    if(x.role==='member'){
-      const m=db.members.find(m=>m.id===x.member_id);
-      if(!m||!m.active){await supabase.auth.signOut();toast('Akun anggota tidak aktif');return}
+    let email=login;
+    if(!login.includes('@')){
+      const {data,error}=await supabaseClient.rpc('get_login_email',{p_username:login});
+      if(error||!data){toast('Username atau password salah');return}
+      email=data;
     }
-    session=x; page='dashboard'; loginView.classList.add('hidden'); appView.classList.remove('hidden'); render();
-  }catch(err){await supabase.auth.signOut();toast('Gagal memuat database: '+(err.message||err))}
+    const {error}=await supabaseClient.auth.signInWithPassword({email,password});
+    if(error){toast('Username atau password salah');return}
+    await startApp();
+  }catch(err){console.error(err);toast('Login gagal');}
 });
-
-logoutBtn.addEventListener('click',async()=>{await supabase.auth.signOut();session=null;db={...initial};appView.classList.add('hidden');loginView.classList.remove('hidden');loginForm.reset()});
+logoutBtn.addEventListener('click',async()=>{await supabaseClient.auth.signOut();session=null;appView.classList.add('hidden');loginView.classList.remove('hidden');loginForm.reset()});
 menuBtn.addEventListener('click',()=>sidebar.classList.toggle('open'));
 
-async function restoreSession(){
-  const {data:{session:authSession}}=await supabase.auth.getSession();
-  if(!authSession)return;
-  try{await loadRemote();const x=db.users.find(u=>u.id===authSession.user.id);if(x&&x.active){x.email=authSession.user.email;session=x;loginView.classList.add('hidden');appView.classList.remove('hidden');render()}}catch(e){console.error(e)}
-}
-supabase.auth.onAuthStateChange((event)=>{if(event==='SIGNED_OUT'){session=null;appView.classList.add('hidden');loginView.classList.remove('hidden')}});
-restoreSession();
-
-function navItems(){return session.role==='admin'?[
-['dashboard','🏠 Dashboard'],['members','👥 Anggota'],['savings','💰 Tabungan'],['transactions','📊 Keuangan'],['reports','📑 Laporan'],['activities','📅 Kegiatan'],['settings','🔐 Keamanan']
-]:[['dashboard','🏠 Dashboard'],['savings','💰 Tabungan Saya'],['reports','📑 Laporan'],['activities','📅 Kegiatan']]}
+function navItems(){return session.role==='admin'?[['dashboard','🏠 Dashboard'],['members','👥 Anggota'],['savings','💰 Tabungan'],['transactions','📊 Keuangan'],['reports','📑 Laporan'],['activities','📅 Kegiatan'],['settings','🔐 Keamanan']]:[['dashboard','🏠 Dashboard'],['savings','💰 Tabungan Saya'],['reports','📑 Laporan'],['activities','📅 Kegiatan']]}
 function renderNav(){nav.innerHTML=navItems().map(x=>`<button class="${page===x[0]?'active':''}" onclick="go('${x[0]}')">${x[1]}</button>`).join('')}
 function go(p){page=p;sidebar.classList.remove('open');render()}
-function render(){renderNav();rolePill.textContent=session.role==='admin'?'ADMIN':'ANGGOTA';pageTitle.textContent=navItems().find(x=>x[0]===page)?.[1].replace(/^\\S+\\s/,'')||'';({dashboard:renderDashboard,members:renderMembers,savings:renderSavings,transactions:renderTransactions,reports:renderReports,activities:renderActivities,settings:renderSettings}[page]||renderDashboard)()}
-
-function totals(){return {savings:db.savings.reduce((a,b)=>a+b.amount,0),income:db.transactions.filter(x=>x.type==='income').reduce((a,b)=>a+b.amount,0),expense:db.transactions.filter(x=>x.type==='expense').reduce((a,b)=>a+b.amount,0)}}
-function renderDashboard(){
-let t=totals(), cash=t.income-t.expense;
-let member=session.role==='member'?db.members.find(m=>m.id===session.memberId):null;
-let mine=session.role==='member'?db.savings.filter(s=>s.member_id===session.memberId).reduce((a,b)=>a+b.amount,0):0;
-let recent=[...db.transactions].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);
-content.innerHTML=`<div class="grid">
-${session.role==='admin'?`
-<div class="card stat"><div class="label">Total anggota</div><div class="value">${db.members.filter(m=>m.active).length}</div></div>
-<div class="card stat"><div class="label">Total tabungan</div><div class="value">${money(t.savings)}</div></div>`:
-`<div class="card stat"><div class="label">Tabungan saya</div><div class="value">${money(mine)}</div></div>
-<div class="card stat"><div class="label">Status minggu ini</div><div class="value" style="font-size:18px">${weekPaid(session.memberId)?'✅ Sudah setor':'⚠️ Belum setor'}</div></div>`}
-<div class="card stat"><div class="label">Saldo kas</div><div class="value">${money(cash)}</div></div>
-<div class="card stat"><div class="label">Pengeluaran</div><div class="value">${money(t.expense)}</div></div>
-</div>
-<div class="section"><div class="section-head"><h3>${session.role==='admin'?'Transaksi terbaru':'Aktivitas keuangan terbaru'}</h3></div>
-<div class="table-wrap">${recent.length?`<table class="table"><thead><tr><th>Tanggal</th><th>Jenis</th><th>Keterangan</th><th>Nominal</th></tr></thead><tbody>${recent.map(x=>`<tr><td>${fmt(x.date)}</td><td>${x.type==='income'?'Pemasukan':'Pengeluaran'}</td><td>${esc(x.note)}</td><td>${money(x.amount)}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">Belum ada transaksi.</div>'}</div></div>`;
-}
+function render(){renderNav();rolePill.textContent=session.role==='admin'?'ADMIN':'ANGGOTA';pageTitle.textContent=navItems().find(x=>x[0]===page)?.[1].replace(/^\S+\s/,'')||'';({dashboard:renderDashboard,members:renderMembers,savings:renderSavings,transactions:renderTransactions,reports:renderReports,activities:renderActivities,settings:renderSettings}[page]||renderDashboard)()}
+function totals(){return {savings:db.savings.reduce((a,b)=>a+Number(b.amount||0),0),income:db.transactions.filter(x=>x.type==='income').reduce((a,b)=>a+Number(b.amount||0),0),expense:db.transactions.filter(x=>x.type==='expense').reduce((a,b)=>a+Number(b.amount||0),0)}}
+function renderDashboard(){let t=totals(),cash=t.income-t.expense;let member=session.role==='member'?db.members.find(m=>m.id===session.memberId):null;let mine=session.role==='member'?db.savings.filter(s=>s.member_id===session.memberId).reduce((a,b)=>a+Number(b.amount||0),0):0;let recent=[...db.transactions].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);content.innerHTML=`<div class="grid">${session.role==='admin'?`<div class="card stat"><div class="label">Total anggota</div><div class="value">${db.members.filter(m=>m.active).length}</div></div><div class="card stat"><div class="label">Total tabungan</div><div class="value">${money(t.savings)}</div></div>`:`<div class="card stat"><div class="label">Tabungan saya</div><div class="value">${money(mine)}</div></div><div class="card stat"><div class="label">Status minggu ini</div><div class="value" style="font-size:18px">${weekPaid(session.memberId)?'✅ Sudah setor':'⚠️ Belum setor'}</div></div>`}<div class="card stat"><div class="label">Saldo kas</div><div class="value">${money(cash)}</div></div><div class="card stat"><div class="label">Pengeluaran</div><div class="value">${money(t.expense)}</div></div></div><div class="section"><div class="section-head"><h3>${session.role==='admin'?'Transaksi terbaru':'Aktivitas keuangan terbaru'}</h3></div><div class="table-wrap">${recent.length?`<table class="table"><thead><tr><th>Tanggal</th><th>Jenis</th><th>Keterangan</th><th>Nominal</th></tr></thead><tbody>${recent.map(x=>`<tr><td>${fmt(x.date)}</td><td>${x.type==='income'?'Pemasukan':'Pengeluaran'}</td><td>${esc(x.note)}</td><td>${money(x.amount)}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">Belum ada transaksi.</div>'}</div></div>`}
 function weekKey(d=new Date()){let x=new Date(d);x.setHours(0,0,0,0);let day=x.getDay()||7;x.setDate(x.getDate()-day+1);return x.toISOString().slice(0,10)}
 function weekPaid(mid){let k=weekKey();return db.savings.some(s=>s.member_id===mid&&weekKey(s.date)===k)}
-function renderMembers(){
-content.innerHTML=`<div class="section-head"><h3>Data Anggota</h3><button class="btn primary" onclick="memberModal()">+ Tambah Anggota</button></div>
-<div class="table-wrap"><table class="table"><thead><tr><th>Nama</th><th>No. HP</th><th>Username</th><th>Status</th><th>Total Tabungan</th><th>Aksi</th></tr></thead><tbody>
-${db.members.map(m=>{let total=db.savings.filter(s=>s.member_id===m.id).reduce((a,b)=>a+b.amount,0);return `<tr><td><b>${esc(m.name)}</b></td><td>${esc(m.phone||'-')}</td><td>${esc(userForMember(m.id)?.username||'-')}</td><td><span class="badge ${m.active?'ok':'no'}">${m.active?'Aktif':'Nonaktif'}</span></td><td>${money(total)}</td><td><button class="btn secondary" onclick="memberModal('${m.id}')">Edit</button></td></tr>`}).join('')}</tbody></table></div>`;
-}
-function renderSavings(){
-if(session.role==='member'){
-let arr=db.savings.filter(s=>s.member_id===session.memberId).sort((a,b)=>b.date.localeCompare(a.date)),total=arr.reduce((a,b)=>a+b.amount,0);
-content.innerHTML=`<div class="grid"><div class="card stat"><div class="label">Total tabungan</div><div class="value">${money(total)}</div></div><div class="card stat"><div class="label">Setoran minggu ini</div><div class="value" style="font-size:18px">${weekPaid(session.memberId)?'✅ Sudah setor':'⚠️ Belum setor'}</div></div></div>
-<div class="section"><div class="section-head"><h3>Riwayat Setoran</h3></div><div class="table-wrap"><table class="table"><thead><tr><th>Tanggal</th><th>Nominal</th><th>Keterangan</th></tr></thead><tbody>${arr.length?arr.map(s=>`<tr><td>${fmt(s.date)}</td><td>${money(s.amount)}</td><td>${esc(s.note||'Tabungan mingguan')}</td></tr>`).join(''):'<tr><td colspan="3" class="empty">Belum ada setoran.</td></tr>'}</tbody></table></div></div>`;
-return}
-content.innerHTML=`<div class="section-head"><div><h3>Tabungan Anggota</h3><p style="color:var(--muted);margin:4px 0 0">Dana tabungan dipisahkan dari dana kas.</p></div><button class="btn primary" onclick="savingModal()">+ Catat Setoran</button></div>
-<div class="table-wrap"><table class="table"><thead><tr><th>Tanggal</th><th>Anggota</th><th>Nominal</th><th>Keterangan</th><th>Aksi</th></tr></thead><tbody>${db.savings.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(s=>{let m=db.members.find(x=>x.id===s.member_id);return `<tr><td>${fmt(s.date)}</td><td>${esc(m?.name||'Anggota tidak ditemukan')}</td><td>${money(s.amount)}</td><td>${esc(s.note||'Tabungan mingguan')}</td><td><button class="btn secondary" onclick="savingModal('${s.id}')">Edit</button></td></tr>`}).join('')||'<tr><td colspan="5" class="empty">Belum ada setoran.</td></tr>'}</tbody></table></div>
-<div class="section"><div class="grid"><div class="card stat"><div class="label">Total dana tabungan</div><div class="value">${money(totals().savings)}</div></div><div class="card stat"><div class="label">Dana kas</div><div class="value">${money(totals().income-totals().expense)}</div></div></div></div>`;
-}
-function renderTransactions(){
-let arr=[...db.transactions].sort((a,b)=>b.date.localeCompare(a.date));
-content.innerHTML=`<div class="section-head"><h3>Keuangan Kas</h3><div><button class="btn primary" onclick="transactionModal('income')">+ Pemasukan</button> <button class="btn gold" onclick="transactionModal('expense')">+ Pengeluaran</button></div></div>
-<div class="table-wrap"><table class="table"><thead><tr><th>Tanggal</th><th>Jenis</th><th>Kategori</th><th>Keterangan</th><th>Nominal</th><th>Aksi</th></tr></thead><tbody>${arr.length?arr.map(x=>`<tr><td>${fmt(x.date)}</td><td>${x.type==='income'?'Pemasukan':'Pengeluaran'}</td><td>${esc(x.category)}</td><td>${esc(x.note)}</td><td>${money(x.amount)}</td><td><button class="btn danger" onclick="deleteTx('${x.id}')">Hapus</button></td></tr>`).join(''):'<tr><td colspan="6" class="empty">Belum ada transaksi.</td></tr>'}</tbody></table></div>`;
-}
-function renderReports(){
-let t=totals(),cash=t.income-t.expense;
-content.innerHTML=`<div class="card"><h3>Laporan Keuangan Mingguan</h3><p style="color:var(--muted)">Ringkasan dana tabungan dan dana kas. Keduanya dicatat terpisah.</p>
-<div class="grid">
-<div class="stat"><div class="label">Saldo awal konsep</div><div class="value">${money(0)}</div></div>
-<div class="stat"><div class="label">Tabungan anggota</div><div class="value">${money(t.savings)}</div></div>
-<div class="stat"><div class="label">Pemasukan kas</div><div class="value">${money(t.income)}</div></div>
-<div class="stat"><div class="label">Pengeluaran</div><div class="value">${money(t.expense)}</div></div>
-</div><hr style="border:0;border-top:1px solid var(--line);margin:20px 0"><h2 style="color:var(--navy)">Dana kas saat ini: ${money(cash)}</h2></div>
-<div class="section"><div class="section-head"><h3>Detail Transaksi</h3></div><div class="table-wrap"><table class="table"><thead><tr><th>Tanggal</th><th>Jenis</th><th>Kategori</th><th>Nominal</th></tr></thead><tbody>${db.transactions.length?db.transactions.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<tr><td>${fmt(x.date)}</td><td>${x.type==='income'?'Pemasukan':'Pengeluaran'}</td><td>${esc(x.category)}</td><td>${money(x.amount)}</td></tr>`).join(''):'<tr><td colspan="4" class="empty">Belum ada transaksi.</td></tr>'}</tbody></table></div></div>`;
-}
-function renderSettings(){
-if(session?.role!=='admin'){go('dashboard');return}
-content.innerHTML=`<div class="card" style="max-width:560px"><h3>Keamanan Admin</h3><p style="color:var(--muted)">Password login dikelola oleh Supabase Auth.</p><form class="form" onsubmit="saveAdminPassword(event)"><label>Email Admin</label><input value="${esc(session?.email||'admin@bolokurowo.local')}" disabled><label>Password Baru</label><input name="next" type="password" minlength="6" required autocomplete="new-password"><label>Ulangi Password Baru</label><input name="confirm" type="password" minlength="6" required autocomplete="new-password"><button class="btn primary">Simpan Password</button></form></div>`;
-}
-async function saveAdminPassword(e){
-e.preventDefault();
-if(session?.role!=='admin'){toast('Hanya admin yang dapat mengubah password');return}
-let f=new FormData(e.target),next=String(f.get('next')||''),confirm=String(f.get('confirm')||'');
-if(next.length<6){toast('Password minimal 6 karakter');return}
-if(next!==confirm){toast('Ulangi password baru harus sama');return}
-const {error}=await supabase.auth.updateUser({password:next});
-if(error){toast('Gagal mengubah password: '+error.message);return}
-e.target.reset();toast('Password admin berhasil diubah');
-}
-function renderActivities(){
-content.innerHTML=`<div class="section-head"><h3>Kegiatan Bolo Kurowo</h3>${session.role==='admin'?'<button class="btn primary" onclick="activityModal()">+ Tambah Kegiatan</button>':''}</div>
-<div class="grid">${db.activities.length?db.activities.map(a=>`<div class="card"><h3>${esc(a.name)}</h3><p>${fmt(a.date)} · ${esc(a.location||'')}</p><p style="color:var(--muted)">${esc(a.description||'')}</p>${session.role==='admin'?`<button class="btn danger" onclick="deleteActivity('${a.id}')">Hapus</button>`:''}</div>`).join(''):'<div class="card" style="grid-column:1/-1"><div class="empty">Belum ada kegiatan.</div></div>'}</div>`;
-}
+function renderMembers(){content.innerHTML=`<div class="section-head"><h3>Data Anggota</h3><button class="btn primary" onclick="memberModal()">+ Tambah Anggota</button></div><div class="table-wrap"><table class="table"><thead><tr><th>Nama</th><th>No. HP</th><th>Username</th><th>Status</th><th>Total Tabungan</th><th>Aksi</th></tr></thead><tbody>${db.members.map(m=>{let total=db.savings.filter(s=>s.member_id===m.id).reduce((a,b)=>a+Number(b.amount||0),0);return `<tr><td><b>${esc(m.name)}</b></td><td>${esc(m.phone||'-')}</td><td>${esc(userForMember(m.id)?.username||'-')}</td><td><span class="badge ${m.active?'ok':'no'}">${m.active?'Aktif':'Nonaktif'}</span></td><td>${money(total)}</td><td><button class="btn secondary" onclick="memberModal('${m.id}')">Edit</button></td></tr>`}).join('')}</tbody></table></div>`}
+function renderSavings(){if(session.role==='member'){let arr=db.savings.filter(s=>s.member_id===session.memberId).sort((a,b)=>b.date.localeCompare(a.date)),total=arr.reduce((a,b)=>a+Number(b.amount||0),0);content.innerHTML=`<div class="grid"><div class="card stat"><div class="label">Total tabungan</div><div class="value">${money(total)}</div></div><div class="card stat"><div class="label">Setoran minggu ini</div><div class="value" style="font-size:18px">${weekPaid(session.memberId)?'✅ Sudah setor':'⚠️ Belum setor'}</div></div></div><div class="section"><div class="section-head"><h3>Riwayat Setoran</h3></div><div class="table-wrap"><table class="table"><thead><tr><th>Tanggal</th><th>Nominal</th><th>Keterangan</th></tr></thead><tbody>${arr.length?arr.map(s=>`<tr><td>${fmt(s.date)}</td><td>${money(s.amount)}</td><td>${esc(s.note||'Tabungan mingguan')}</td></tr>`).join(''):'<tr><td colspan="3" class="empty">Belum ada setoran.</td></tr>'}</tbody></table></div></div>`;return}content.innerHTML=`<div class="section-head"><div><h3>Tabungan Anggota</h3><p style="color:var(--muted);margin:4px 0 0">Dana tabungan dipisahkan dari dana kas.</p></div><button class="btn primary" onclick="savingModal()">+ Catat Setoran</button></div><div class="table-wrap"><table class="table"><thead><tr><th>Tanggal</th><th>Anggota</th><th>Nominal</th><th>Keterangan</th><th>Aksi</th></tr></thead><tbody>${db.savings.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(s=>{let m=db.members.find(x=>x.id===s.member_id);return `<tr><td>${fmt(s.date)}</td><td>${esc(m?.name||'Anggota tidak ditemukan')}</td><td>${money(s.amount)}</td><td>${esc(s.note||'Tabungan mingguan')}</td><td><button class="btn secondary" onclick="savingModal('${s.id}')">Edit</button></td></tr>`}).join('')||'<tr><td colspan="5" class="empty">Belum ada setoran.</td></tr>'}</tbody></table></div><div class="section"><div class="grid"><div class="card stat"><div class="label">Total dana tabungan</div><div class="value">${money(totals().savings)}</div></div><div class="card stat"><div class="label">Dana kas</div><div class="value">${money(totals().income-totals().expense)}</div></div></div></div>`}
+function renderTransactions(){let arr=[...db.transactions].sort((a,b)=>b.date.localeCompare(a.date));content.innerHTML=`<div class="section-head"><h3>Keuangan Kas</h3><div><button class="btn primary" onclick="transactionModal('income')">+ Pemasukan</button> <button class="btn gold" onclick="transactionModal('expense')">+ Pengeluaran</button></div></div><div class="table-wrap"><table class="table"><thead><tr><th>Tanggal</th><th>Jenis</th><th>Kategori</th><th>Keterangan</th><th>Nominal</th><th>Aksi</th></tr></thead><tbody>${arr.length?arr.map(x=>`<tr><td>${fmt(x.date)}</td><td>${x.type==='income'?'Pemasukan':'Pengeluaran'}</td><td>${esc(x.category)}</td><td>${esc(x.note)}</td><td>${money(x.amount)}</td><td><button class="btn danger" onclick="deleteTx('${x.id}')">Hapus</button></td></tr>`).join(''):'<tr><td colspan="6" class="empty">Belum ada transaksi.</td></tr>'}</tbody></table></div>`}
+function renderReports(){let t=totals(),cash=t.income-t.expense;content.innerHTML=`<div class="card"><h3>Laporan Keuangan Mingguan</h3><p style="color:var(--muted)">Ringkasan dana tabungan dan dana kas. Keduanya dicatat terpisah.</p><div class="grid"><div class="stat"><div class="label">Saldo awal konsep</div><div class="value">${money(0)}</div></div><div class="stat"><div class="label">Tabungan anggota</div><div class="value">${money(t.savings)}</div></div><div class="stat"><div class="label">Pemasukan kas</div><div class="value">${money(t.income)}</div></div><div class="stat"><div class="label">Pengeluaran kas</div><div class="value">${money(t.expense)}</div></div></div><hr style="border:0;border-top:1px solid var(--line);margin:20px 0"><h2 style="color:var(--navy)">Dana kas saat ini: ${money(cash)}</h2></div><div class="section"><div class="section-head"><h3>Detail Transaksi</h3></div><div class="table-wrap"><table class="table"><thead><tr><th>Tanggal</th><th>Jenis</th><th>Kategori</th><th>Nominal</th></tr></thead><tbody>${db.transactions.length?db.transactions.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<tr><td>${fmt(x.date)}</td><td>${x.type==='income'?'Pemasukan':'Pengeluaran'}</td><td>${esc(x.category)}</td><td>${money(x.amount)}</td></tr>`).join(''):'<tr><td colspan="4" class="empty">Belum ada transaksi.</td></tr>'}</tbody></table></div></div>`}
+function renderSettings(){if(session?.role!=='admin'){go('dashboard');return}content.innerHTML=`<div class="card" style="max-width:560px"><h3>Keamanan Admin</h3><p style="color:var(--muted)">Ubah password admin di sini. Password dikelola oleh Supabase Auth.</p><form class="form" onsubmit="saveAdminPassword(event)"><label>Username Admin</label><input value="${esc(session?.username||'admin')}" disabled><label>Password Baru</label><input name="next" type="password" minlength="6" required autocomplete="new-password" placeholder="Minimal 6 karakter"><label>Ulangi Password Baru</label><input name="confirm" type="password" minlength="6" required autocomplete="new-password"><button class="btn primary">Simpan Password Admin</button></form></div>`}
+async function saveAdminPassword(e){e.preventDefault();if(session?.role!=='admin'){toast('Hanya admin');return}let f=new FormData(e.target),next=String(f.get('next')||''),confirm=String(f.get('confirm')||'');if(next.length<6||next!==confirm){toast('Password baru tidak valid atau tidak sama');return}const {error}=await supabaseClient.auth.updateUser({password:next});if(error){toast(error.message);return}e.target.reset();toast('Password admin berhasil diubah')}
+function renderActivities(){content.innerHTML=`<div class="section-head"><h3>Kegiatan Bolo Kurowo</h3>${session.role==='admin'?'<button class="btn primary" onclick="activityModal()">+ Tambah Kegiatan</button>':''}</div><div class="grid">${db.activities.length?db.activities.map(a=>`<div class="card"><h3>${esc(a.name)}</h3><p>${fmt(a.date)} · ${esc(a.location||'')}</p><p style="color:var(--muted)">${esc(a.description||'')}</p>${session.role==='admin'?`<button class="btn danger" onclick="deleteActivity('${a.id}')">Hapus</button>`:''}</div>`).join(''):'<div class="card" style="grid-column:1/-1"><div class="empty">Belum ada kegiatan.</div></div>'}</div>`}
 function showModal(inner){modal.innerHTML=`<div class="modal-card">${inner}</div>`;modal.classList.remove('hidden')}
 function closeModal(){modal.classList.add('hidden')}
 modal.addEventListener('click',e=>{if(e.target===modal)closeModal()});
-function memberModal(id){
-let m=db.members.find(x=>x.id===id)||{id:'',name:'',phone:'',active:true,user_id:null};
-showModal(`<div class="modal-head"><h3>${id?'Edit':'Tambah'} Anggota</h3><button class="x" onclick="closeModal()">×</button></div><form class="form" onsubmit="saveMember(event,'${id||''}')"><label>Nama</label><input name="name" value="${esc(m.name)}" required><label>No. HP</label><input name="phone" value="${esc(m.phone||'')}"><label>User ID Auth (opsional)</label><input name="user_id" value="${esc(m.user_id||'')}" placeholder="UUID dari Supabase Auth"><small style="color:var(--muted)">Buat akun login melalui Supabase Auth, lalu masukkan UUID-nya di sini.</small><label>Status</label><select name="active"><option value="true" ${m.active?'selected':''}>Aktif</option><option value="false" ${!m.active?'selected':''}>Nonaktif</option></select><button class="btn primary">Simpan</button></form>`);
-}
-async function saveMember(e,id){e.preventDefault();if(session?.role!=='admin'){toast('Hanya admin yang dapat mengubah anggota');return}let f=new FormData(e.target);let data={id:id||newId(),name:String(f.get('name')||'').trim(),phone:String(f.get('phone')||'').trim(),active:f.get('active')==='true',user_id:String(f.get('user_id')||'').trim()||null};if(!data.name){toast('Nama wajib diisi');return}let r=await supabase.from('members').upsert(data).select().single();if(r.error){toast('Gagal menyimpan anggota: '+r.error.message);return}await loadRemote();closeModal();toast('Data anggota tersimpan online');render()}
-function savingModal(id){
-if(session?.role!=='admin'){toast('Hanya admin yang dapat mengubah data tabungan');return}
-let item=id?db.savings.find(s=>s.id===id):null;
-showModal(`<div class="modal-head"><h3>${item?'Edit Setoran':'Catat Setoran'}</h3><button class="x" onclick="closeModal()">×</button></div><form class="form" onsubmit="saveSaving(event,'${item?.id||''}')"><label>Anggota</label><select name="memberId" required>${db.members.filter(m=>m.active||m.id===item?.member_id).map(m=>`<option value="${m.id}" ${m.id===item?.member_id?'selected':''}>${esc(m.name)}</option>`).join('')}</select><div class="row"><div><label>Tanggal</label><input type="date" name="date" value="${item?.date||new Date().toISOString().slice(0,10)}" required></div><div><label>Nominal</label><input type="number" name="amount" min="1" step="1" inputmode="numeric" value="${item?.amount??10000}" required></div></div><label>Keterangan</label><input name="note" value="${esc(item?.note||'Tabungan mingguan')}"><button class="btn primary">${item?'Simpan Perubahan':'Simpan Setoran'}</button></form>`);
-}
-async function saveSaving(e,id=''){
-if(session?.role!=='admin'){toast('Hanya admin yang dapat mengubah data tabungan');return}
-e.preventDefault();let f=new FormData(e.target),data={id:id||newId(),member_id:f.get('memberId'),date:f.get('date'),amount:Number(f.get('amount')),note:f.get('note')};
-if(!data.member_id||!data.date||!Number.isFinite(data.amount)||data.amount<=0){toast('Periksa data setoran');return}
-let r=await supabase.from('savings').upsert(data).select().single();if(r.error){toast('Gagal menyimpan setoran: '+r.error.message);return}await loadRemote();closeModal();toast('Setoran berhasil disimpan online');render();
-}
-function transactionModal(type){
-showModal(`<div class="modal-head"><h3>${type==='income'?'Tambah Pemasukan':'Tambah Pengeluaran'}</h3><button class="x" onclick="closeModal()">×</button></div><form class="form" onsubmit="saveTx(event,'${type}')"><label>Tanggal</label><input type="date" name="date" value="${new Date().toISOString().slice(0,10)}" required><label>Kategori</label><input name="category" placeholder="${type==='income'?'Contoh: Donasi':'Contoh: Santunan'}" required><label>Nominal</label><input type="number" name="amount" min="1" required><label>Keterangan</label><textarea name="note" rows="3"></textarea><button class="btn primary">Simpan</button></form>`);
-}
-async function saveTx(e,type){if(session?.role!=='admin'){toast('Hanya admin yang dapat mengubah keuangan');return}e.preventDefault();let f=new FormData(e.target),row={id:newId(),type,date:f.get('date'),category:f.get('category'),amount:Number(f.get('amount')),note:f.get('note')};let r=await supabase.from('transactions').insert(row);if(r.error){toast('Gagal menyimpan transaksi: '+r.error.message);return}await loadRemote();closeModal();toast('Transaksi tersimpan online');render()}
-async function saveActivity(e){if(session?.role!=='admin'){toast('Hanya admin yang dapat mengubah kegiatan');return}e.preventDefault();let f=new FormData(e.target),row={id:newId(),name:f.get('name'),date:f.get('date'),location:f.get('location'),description:f.get('description')};let r=await supabase.from('activities').insert(row);if(r.error){toast('Gagal menyimpan kegiatan: '+r.error.message);return}await loadRemote();closeModal();toast('Kegiatan ditambahkan online');render()}
-async function deleteActivity(id){if(session?.role!=='admin'){toast('Hanya admin yang dapat menghapus kegiatan');return}if(!confirm('Hapus kegiatan?'))return;let r=await supabase.from('activities').delete().eq('id',id);if(r.error){toast('Gagal menghapus kegiatan: '+r.error.message);return}await loadRemote();render()}
-function toast(msg){toastBox.textContent=msg;toastBox.classList.remove('hidden');setTimeout(()=>toastBox.classList.add('hidden'),2200)}
+function memberModal(id){let m=db.members.find(x=>x.id===id)||{id:'',name:'',phone:'',active:true},u=id?userForMember(id):null;showModal(`<div class="modal-head"><h3>${id?'Edit':'Tambah'} Anggota</h3><button class="x" onclick="closeModal()">×</button></div><form class="form" onsubmit="saveMember(event,'${id||''}','${u?.id||''}')"><label>Nama</label><input name="name" value="${esc(m.name)}" required><label>No. HP</label><input name="phone" value="${esc(m.phone||'')}"><label>Username Login</label><input name="username" value="${esc(u?.username||'')}" required placeholder="Username unik"><label>${u?'Password Baru (kosongkan jika tidak diubah)':'Password Login'}</label><input name="password" type="password" ${u?'':'required'} placeholder="Minimal 6 karakter"><label>Status</label><select name="active"><option value="true" ${m.active?'selected':''}>Aktif</option><option value="false" ${!m.active?'selected':''}>Nonaktif</option></select><button class="btn primary">Simpan</button></form>`)}
+async function saveMember(e,id,userId){e.preventDefault();if(session?.role!=='admin'){toast('Hanya admin');return}let f=new FormData(e.target),payload={memberId:id||null,userId:userId||null,name:String(f.get('name')||''),phone:String(f.get('phone')||''),username:String(f.get('username')||'').trim(),password:String(f.get('password')||''),active:f.get('active')==='true'};if(!payload.username){toast('Username wajib diisi');return}if(!id&&payload.password.length<6){toast('Password minimal 6 karakter');return}try{const {data:{session:as}}=await supabaseClient.auth.getSession();const r=await fetch('/api/admin-member',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+as.access_token},body:JSON.stringify(payload)});const j=await r.json();if(!r.ok)throw new Error(j.error||'Gagal menyimpan anggota');closeModal();await loadRemote();toast('Data anggota & akun login tersimpan');render()}catch(err){console.error(err);toast(err.message||'Gagal menyimpan anggota')}}
+function savingModal(id){if(session?.role!=='admin'){toast('Hanya admin yang dapat mengubah data tabungan');return}let item=id?db.savings.find(s=>s.id===id):null;showModal(`<div class="modal-head"><h3>${item?'Edit Setoran':'Catat Setoran'}</h3><button class="x" onclick="closeModal()">×</button></div><form class="form" onsubmit="saveSaving(event,'${item?.id||''}')"><label>Anggota</label><select name="memberId" required>${db.members.filter(m=>m.active||m.id===item?.member_id).map(m=>`<option value="${m.id}" ${m.id===item?.member_id?'selected':''}>${esc(m.name)}</option>`).join('')}</select><div class="row"><div><label>Tanggal</label><input type="date" name="date" value="${item?.date||new Date().toISOString().slice(0,10)}" required></div><div><label>Nominal</label><input type="number" name="amount" min="1" step="1" inputmode="numeric" value="${item?.amount??10000}" required></div></div><label>Keterangan</label><input name="note" value="${esc(item?.note||'Tabungan mingguan')}"><button class="btn primary">${item?'Simpan Perubahan':'Simpan Setoran'}</button></form>`)}
+async function saveSaving(e,id=''){if(session?.role!=='admin'){toast('Hanya admin yang dapat mengubah data tabungan');return}e.preventDefault();let f=new FormData(e.target),data={member_id:f.get('memberId'),date:f.get('date'),amount:Number(f.get('amount')),note:f.get('note')};if(!data.member_id||!data.date||!Number.isFinite(data.amount)||data.amount<=0){toast('Periksa data setoran');return}let q=id?supabaseClient.from('savings').update(data).eq('id',id):supabaseClient.from('savings').insert(data);const {error}=await q;if(error){toast(error.message);return}closeModal();await loadRemote();toast(id?'Setoran berhasil diperbaiki':'Setoran berhasil dicatat');render()}
+function transactionModal(type){showModal(`<div class="modal-head"><h3>${type==='income'?'Tambah Pemasukan':'Tambah Pengeluaran'}</h3><button class="x" onclick="closeModal()">×</button></div><form class="form" onsubmit="saveTx(event,'${type}')"><label>Tanggal</label><input type="date" name="date" value="${new Date().toISOString().slice(0,10)}" required><label>Kategori</label><input name="category" placeholder="${type==='income'?'Contoh: Donasi':'Contoh: Santunan'}" required><label>Nominal</label><input type="number" name="amount" min="1" required><label>Keterangan</label><textarea name="note" rows="3"></textarea><button class="btn primary">Simpan</button></form>`)}
+async function saveTx(e,type){if(session?.role!=='admin'){toast('Hanya admin yang dapat mengubah keuangan');return}e.preventDefault();let f=new FormData(e.target);const {error}=await supabaseClient.from('transactions').insert({type,date:f.get('date'),category:f.get('category'),amount:Number(f.get('amount')),note:f.get('note')});if(error){toast(error.message);return}closeModal();await loadRemote();toast('Transaksi tersimpan');render()}
+async function deleteTx(id){if(session?.role!=='admin'){toast('Hanya admin');return}if(!confirm('Hapus transaksi ini?'))return;const {error}=await supabaseClient.from('transactions').delete().eq('id',id);if(error){toast(error.message);return}await loadRemote();toast('Transaksi dihapus');render()}
+function activityModal(){showModal(`<div class="modal-head"><h3>Tambah Kegiatan</h3><button class="x" onclick="closeModal()">×</button></div><form class="form" onsubmit="saveActivity(event)"><label>Nama kegiatan</label><input name="name" required placeholder="Santunan yatim"><label>Tanggal</label><input type="date" name="date" required><label>Lokasi</label><input name="location"><label>Deskripsi</label><textarea name="description" rows="3"></textarea><button class="btn primary">Simpan</button></form>`)}
+async function saveActivity(e){if(session?.role!=='admin'){toast('Hanya admin');return}e.preventDefault();let f=new FormData(e.target);const {error}=await supabaseClient.from('activities').insert({name:f.get('name'),date:f.get('date'),location:f.get('location'),description:f.get('description')});if(error){toast(error.message);return}closeModal();await loadRemote();toast('Kegiatan ditambahkan');render()}
+async function deleteActivity(id){if(session?.role!=='admin'){toast('Hanya admin');return}if(!confirm('Hapus kegiatan?'))return;const {error}=await supabaseClient.from('activities').delete().eq('id',id);if(error){toast(error.message);return}await loadRemote();render()}
+function toast(msg){toastBox.textContent=msg;toastBox.classList.remove('hidden');setTimeout(()=>toastBox.classList.add('hidden'),3000)}
+supabaseClient.auth.getSession().then(({data:{session:s}})=>{if(s)startApp()});
 </script>
 </body>
 </html>
