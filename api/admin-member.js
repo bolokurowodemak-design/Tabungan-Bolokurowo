@@ -165,7 +165,8 @@ export default async function handler(req,res){
       );
     }
 
-    const mj=await mr.json();
+    const mj=mr.ok?{}:await
+    mr.json().catch(()=>({}));
 
     if(!mr.ok)
       return res.status(mr.status).json({
