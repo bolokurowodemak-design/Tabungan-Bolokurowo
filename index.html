@@ -152,16 +152,23 @@ function weekKey(d=new Date()){let x=new Date(d);x.setHours(0,0,0,0);let day=x.g
 function weekPaid(mid){let k=weekKey();return db.savings.some(s=>s.member_id===mid&&weekKey(s.date)===k)}
 function renderMembers(){
   if(session?.role==='member'){
-    content.innerHTML=`<div class="section-head"><h3>Data Anggota</h3></div>
-    <div class="table-wrap"><table class="table">
-    <thead><tr><th>Nama</th><th>No. HP</th><th>Status</th><th>Total Tabungan</th></tr></thead>
-    <tbody>${db.members.map(m=>{
+    content.innerHTML=`<div class="section-head"><h3>Data Anggota</h3><p style="margin:0;color:var(--muted);font-size:13px">Saldo tabungan anggota ditampilkan untuk transparansi bersama.</p></div>
+    <div class="member-public-list">${db.members.map(m=>{
       let total=db.savings.filter(s=>s.member_id===m.id).reduce((a,b)=>a+Number(b.amount||0),0);
-      return `<tr><td><b>${esc(m.name)}</b></td><td>${esc(m.phone||'-')}</td>
-      <td><span class="badge ${m.active?'ok':'no'}">${m.active?'Aktif':'Nonaktif'}</span></td>
-      <td>${money(total)}</td></tr>`;
-    }).join('')||'<tr><td colspan="4" class="empty">Belum ada data anggota.</td></tr>'}
-    </tbody></table></div>`;
+      return `<div class="card" style="margin-bottom:10px;padding:15px 16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+          <div style="min-width:0">
+            <div style="font-weight:800;font-size:15px">${esc(m.name)}</div>
+            <div style="margin-top:4px;color:var(--muted);font-size:12px">${esc(m.phone||'-')}</div>
+          </div>
+          <span class="badge ${m.active?'ok':'no'}">${m.active?'Aktif':'Nonaktif'}</span>
+        </div>
+        <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center">
+          <span style="color:var(--muted);font-size:12px">Total Tabungan</span>
+          <b style="font-size:17px">${money(total)}</b>
+        </div>
+      </div>`;
+    }).join('')||'<div class="empty">Belum ada data anggota.</div>'}</div>`;
     return;
   }
   content.innerHTML=`<div class="section-head"><h3>Data Anggota</h3><button class="btn primary" onclick="memberModal()">+ Tambah Anggota</button></div>
