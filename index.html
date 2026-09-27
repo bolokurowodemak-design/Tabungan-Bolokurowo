@@ -133,7 +133,7 @@ loginForm.addEventListener('submit',async e=>{
 logoutBtn.addEventListener('click',async()=>{await supabaseClient.auth.signOut();session=null;appView.classList.add('hidden');loginView.classList.remove('hidden');loginForm.reset()});
 menuBtn.addEventListener('click',()=>sidebar.classList.toggle('open'));
 
-function navItems(){return session.role==='admin'?[['dashboard','🏠 Dashboard'],['members','👥 Anggota'],['savings','💰 Tabungan'],['transactions','📊 Keuangan'],['reports','📑 Laporan'],['activities','📅 Kegiatan'],['settings','🔐 Keamanan']]:[['dashboard','🏠 Dashboard'],['savings','💰 Tabungan Saya'],['reports','📑 Laporan'],['activities','📅 Kegiatan']]}
+function navItems(){return session.role==='admin'?[['dashboard','🏠 Dashboard'],['members','👥 Anggota'],['savings','💰 Tabungan'],['transactions','📊 Keuangan'],['reports','📑 Laporan'],['activities','📅 Kegiatan'],['settings','🔐 Keamanan']]:[['dashboard','🏠 Dashboard'],['savings','💰 Tabungan Saya'],,['members','👥 Anggota'],['reports','📑 Laporan'],['activities','📅 Kegiatan']]}
 function renderNav(){nav.innerHTML=navItems().map(x=>`<button class="${page===x[0]?'active':''}" onclick="go('${x[0]}')">${x[1]}</button>`).join('')}
 function go(p){page=p;sidebar.classList.remove('open');render()}
 function render(){renderNav();rolePill.textContent=session.role==='admin'?'ADMIN':'ANGGOTA';pageTitle.textContent=navItems().find(x=>x[0]===page)?.[1].replace(/^\S+\s/,'')||'';({dashboard:renderDashboard,members:renderMembers,savings:renderSavings,transactions:renderTransactions,reports:renderReports,activities:renderActivities,settings:renderSettings}[page]||renderDashboard)()}
