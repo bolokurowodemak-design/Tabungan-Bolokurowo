@@ -146,7 +146,7 @@ export default async function handler(req,res){
 
     if(b.memberId){
       mr=await fetch(
-        base+'/rest/v1/members?id='+
+        base+'/rest/v1/members?id=eq.'+
         encodeURIComponent(b.memberId),
         {
           method:'PATCH',
